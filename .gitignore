@@ -37,3 +37,6 @@ xmlrpc.php
 
 # Ignore idea
 .idea
+databases
+runtime
+Skrech

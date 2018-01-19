@@ -1,0 +1,112 @@
+version: "2"
+
+services:
+  mariadb:
+    image: wodby/drupal-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: drupal
+      MYSQL_DATABASE: drupal
+      MYSQL_USER: drupal
+      MYSQL_PASSWORD: drupal
+    volumes:
+      - ./runtime/mariadb:/var/lib/mysql
+      - ./databases:/var/lib/mysql/databases
+
+  php:
+    image: wodby/drupal-php:7.0 # Allowed: 7.0, 5.6.
+    restart: unless-stopped
+    environment:
+      PHP_SITE_NAME: dev
+      PHP_HOST_NAME: moddev.dev.loc
+      PHP_DOCROOT: srcRoot/web # Relative path inside the /var/www/html/ directory.
+      PHP_SENDMAIL_PATH: /usr/sbin/sendmail -t -i -S mailhog:1025
+      PHP_XDEBUG_ENABLED: 1 # Set 1 to enable.
+      PHP_XDEBUG_AUTOSTART: 1
+    volumes:
+      - ./:/var/www/html
+      - ./runtime/drush:/home/www-data/.drush
+      - ./runtime/.ssh:/home/www-data/.ssh
+
+  nginx:
+    image: wodby/drupal-nginx:1.10
+    restart: unless-stopped
+    environment:
+      NGINX_SERVER_NAME: localhost
+      NGINX_UPSTREAM_NAME: php
+      NGINX_DOCROOT: srcRoot/web # Relative path inside the /var/www/html/ directory.
+      DRUPAL_VERSION: 8 # Allowed: 7, 8.
+
+      VIRTUAL_HOST: moddev.dev.loc
+    volumes_from:
+      - php
+#    networks:3
+#      - proxy_net
+    ports:
+      - "8034:80"
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: drupal
+      PHP_UPLOAD_MAX_FILESIZE: 1G
+      PHP_MAX_INPUT_VARS: 1G
+      VIRTUAL_HOST: moddev.pma.loc
+    volumes:
+      - ./runtime/metro:/www/themes/metro
+    networks:
+#      - proxy_net
+      - default
+
+  mailhog:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    environment:
+      VIRTUAL_HOST: moddev.hog.loc
+      VIRTUAL_PORT: 8035
+    networks:
+#      - proxy_net
+      - default
+
+
+
+#  networks:
+#    proxy_net:
+#      external: true
+
+
+#  redis:
+#    image: redis:3.2-alpine
+
+#  memcached:
+#    image: memcached:1.4-alpine
+
+#  memcached-admin:
+#    image: phynias/phpmemcachedadmin
+#    ports:
+#      - "8047:80"
+
+#  solr:
+#    image: solr:5.5-alpine
+#    volumes:
+#      - ./runtime/solr:/opt/solr/server/solr/mycores
+#    ports:
+#      - "8043:8983"
+
+#  varnish:
+#    image: wodby/drupal-varnish
+#    depends_on:
+#      - nginx
+#    environment:
+#      VARNISH_SECRET: secret
+#      VARNISH_BACKEND_HOST: nginx
+#      VARNISH_BACKEND_PORT: 80
+#      VARNISH_MEMORY_SIZE: 256M
+#      VARNISH_STORAGE_SIZE: 1024M
+#    ports:
+#      - "8044:6081" # HTTP Proxy
+#      - "8045:6082" # Control terminal
+
